@@ -1,89 +1,157 @@
 # sprHarness
 
-A portable, host-agnostic configuration harness for AI coding agents:
-**Claude Code**, **Cursor**, and **Codex** — designed for subscription-based
-usage (Claude Pro/Max, Cursor plans, ChatGPT plans), not API credits.
+**A portable harness for AI coding agents — Claude Code, Cursor, and Codex —
+that routes work to cheaper models, keeps your main context clean, and
+proves it with a benchmark.**
 
-The core principle: **configuration is independent of installation.** You can
-configure every host today on a laptop that has none of them installed, commit
-the result, and any machine that later clones this repo — yours or a
-colleague's — materializes the same setup with one command.
-
-## Quick start
+One `install` gives every machine you use the same fleet of model-tiered
+workers, enforcement hooks, skills, and slash commands, working on your
+existing subscriptions (Claude Pro/Max, Cursor, ChatGPT) — no API keys, no
+dependencies, nothing to `npm install`.
 
 ```
-git clone <this-repo>
-cd sprHarness
-node cli/harness.mjs setup        # or: .\harness setup   /  ./harness setup
+git clone https://github.com/benasus25/sprHarness.git && cd sprHarness
+node cli/harness.mjs setup --all
 node cli/harness.mjs install
 node cli/harness.mjs doctor
 ```
 
-Requires only Node.js ≥ 16 — no npm install, no dependencies.
+Requires Node.js ≥ 16 (18+ recommended). Windows, macOS, Linux.
+
+## What you get
+
+**Workers** (subagents that run in their *own* context window on a cheaper
+model — the orchestrator only ever sees their summary):
+
+| Tier | Workers | Used for |
+|---|---|---|
+| haiku | `scout`, `bulk-reader`, `git-historian`, `dependency-scout`, `doc-writer`, `pr-writer` | locating, reading, history, packages, docs, PR text |
+| sonnet | `code-writer`, `test-writer`, `refactorer`, `reviewer`, `security-auditor` | boilerplate, tests, mechanical edits, review, security |
+| inherit | `debugger` | hard root-causing (keeps your main model) |
+
+Automatic delegation is driven by each worker's description ("Use
+PROACTIVELY when…") plus a short routing policy installed into your
+user-level `CLAUDE.md`.
+
+**Enforcement hooks** (the [Spotify "shunt" pattern](https://engineering.atspotify.com/2026/9/portal-by-spotify-cut-my-claude-code-token-usage-by-90),
+rebuilt on subscription-native subagents):
+
+| Hook | What it does | Bypassable |
+|---|---|---|
+| `max-read-size` | blocks untargeted reads of files over 400 lines → "ask `bulk-reader`" | yes (`bare:`) |
+| `no-bulk-cat` | blocks `cat`/`type` dumps of large files | yes |
+| `bypass-toggle` | implements the `bare:` switch (below) | — |
+| `session-log` | appends token stats per session to `local/bench/sessions.csv` | — |
+| `block-destructive` | stops force-push to main, `reset --hard`, `clean -x`, `rm -rf /` | **never** |
+| `protect-secrets` | blocks reading/editing `.env`-style files (opt-in) | never |
+
+**Skills**: `token-thrift`, `harness-bypass`, `benchmarking`, `tdd`,
+`debugging`, `codebase-onboarding`, `safe-refactor`, `context-hygiene`,
+`security-review`, `pr-description`, `delegate-codex`, `delegate-cursor`,
+`conventional-commits`.
+
+**Slash commands**: `/bare`, `/review`, `/explain`, `/tests`, `/pr`,
+`/audit`, `/onboard`, `/standup`, `/handoff`.
+
+## Running a prompt without the harness
+
+Not every task benefits from delegation. Prefix a prompt with `bare:` (or
+use `/bare`) and, for that prompt only, the token-thrift hooks stand down
+and the model is told to work directly:
+
+```
+bare: rename parseFoo to parseBar in utils.js and fix the two callers
+```
+
+The next normal prompt restores routing automatically. Safety hooks are
+never bypassed. `SPRHARNESS_BYPASS=1` in the environment does the same for
+a whole process (the benchmark uses this).
+
+## Benchmarking: does it actually save tokens?
+
+```
+harness bench run --n 3          # 8 tasks × {harness, bare} × 3 runs
+harness bench report             # markdown: by condition / category / task
+harness bench sessions           # trend from your real sessions (passive log)
+```
+
+The primary metric is **orchestrator context tokens** — what the expensive
+model consumes and what subscription rate limits weigh most. Success rate is
+the guard metric: a cheaper failure is a loss. The report ends with a
+verdict per category, including where to use `bare:` instead.
+
+The runner drives the Claude Code CLI headlessly (`claude -p`) against a
+pinned clone of Express (edit `bench/suite.json` to change tasks or target).
+It needs the `claude` CLI on PATH — the desktop app alone is not enough:
+
+```bash
+# Windows
+irm https://claude.ai/install.ps1 | iex
+# macOS / Linux
+curl -fsSL https://claude.ai/install.sh | bash
+```
+
+`--runner mock` exercises the full pipeline with synthetic numbers (CI uses it).
+`--hard-baseline` adds a condition with the harness fully uninstalled.
 
 ## Commands
 
-| Command | What it does |
+| Command | |
 |---|---|
-| `harness setup` | Choose hosts to configure (interactive, or `--hosts claude,cursor,codex`, or `--all`). Saves portable config. **Never requires the host to be installed.** |
-| `harness install [host…]` | Materializes the portable config into this machine's user-level host locations (`~/.claude`, `~/.cursor`, `~/.codex`). `--dry-run` shows the plan. |
-| `harness uninstall [host…]` | Undoes exactly what install wrote here (tracked in a machine-local manifest). |
-| `harness status` | Portable config summary + what's installed on this machine. |
-| `harness doctor` | Runtime diagnostics: binaries, versions, sign-in state vs. saved config. |
-| `harness profile use <name>` | Activate a committed personal overlay from `profiles/<name>/` on this machine. |
-| `harness link [dir]` | Stamp `AGENTS.md` + a `CLAUDE.md` shim into a coding project (the project-level layer). |
+| `setup [--all \| --hosts a,b]` | choose hosts to configure — **no host needs to be installed** |
+| `install [host…] [--dry-run] [--force]` | materialize into `~/.claude`, `~/.cursor`, `~/.codex` (idempotent, tracked) |
+| `uninstall [host…]` | undo exactly what install wrote here |
+| `check [--strict]` | validate all content (pre-commit / CI gate) |
+| `diff [--exit-code]` | repo vs installed drift |
+| `status` / `doctor` | portable state / runtime readiness (binaries, versions, sign-in) |
+| `bench run\|report\|sessions\|list\|init` | measurement |
+| `profile use <name>` | activate a committed personal overlay (`profiles/<name>/`) |
+| `env set K V` | machine-local secrets for `${VAR}` in MCP definitions |
+| `link [dir]` | stamp `AGENTS.md` + `CLAUDE.md` shim into a project |
 
-## What travels through git, what stays local
+`--root <dir>` (or `SPRHARNESS_ROOT`) points the CLI at another content repo.
 
-**Committed (portable):** `harness.json` (which hosts are configured),
-`config/<host>.json` (per-host preferences: models, reasoning effort, install
-toggles), everything under `shared/` (skills, agents/workers, prompts,
-instructions, hook definitions + scripts, MCP server definitions), and
-`profiles/<name>/` personal overlays.
+## How it stays safe on your machine
 
-**Never committed (machine-local, gitignored `local/`):** install manifests,
-backups, the active profile choice, machine path overrides.
+- JSON files the host also owns (`settings.json`, `mcp.json`, `hooks.json`)
+  are **merged key-by-key with tracked undo**; your keys are never touched.
+- Shared text files (`CLAUDE.md`, `AGENTS.md`, `config.toml`) get one
+  **marker-managed block**; everything outside it is yours.
+- A skill/agent/command of yours with the same name as a harness one is
+  **skipped with a warning** (`--force` to replace).
+- Credentials are never read, written, or committed. `local/` (manifests,
+  backups, secrets, benchmark data) is gitignored.
+- Every hook fails open.
 
-**Never touched at all:** credentials. Each machine signs in through each
-host's own supported flow (`claude` login, Cursor app sign-in, `codex`
-ChatGPT sign-in). Auth state stays wherever the host puts it.
+## Repo layout
 
-## What one `harness install` sets up
+```
+harness.json            which hosts are configured        (portable)
+config/<host>.json      per-host preferences              (portable)
+shared/                 skills/ agents/ prompts/ hooks/ instructions/ mcp/   (portable)
+profiles/<name>/        committed personal overlays       (portable)
+bench/suite.json        benchmark tasks                   (portable)
+local/                  manifests, backups, env.json, bench results   (never committed)
+cli/                    zero-dependency Node CLI + host adapters
+tests/                  node tests/run.mjs
+```
 
-A working token-thrift worker system (the
-[Spotify "shunt" pattern](https://engineering.atspotify.com/2026/9/portal-by-spotify-cut-my-claude-code-token-usage-by-90),
-adapted to subscription usage — see docs/ARCHITECTURE.md):
+## Hosts
 
-- **Workers** with model tiers: `scout` + `bulk-reader` on **haiku**,
-  `code-writer` + `reviewer` on **sonnet** — the orchestrating session stays
-  on your default model and delegates I/O-heavy work automatically.
-- **Enforcement hooks** (Claude Code): untargeted reads of >400-line files
-  and `cat`-style dumps are blocked and redirected to `bulk-reader`
-  (threshold: `SPRHARNESS_MAX_READ_LINES`; disable in `shared/hooks/hooks.json`).
-- **Skills**: `token-thrift` (the routing rules), `delegate-codex` /
-  `delegate-cursor` (cross-host second opinions via `codex exec` /
-  `cursor-agent -p` on each machine's own subscription sign-in),
-  `conventional-commits`.
+| | Claude Code | Cursor | Codex |
+|---|---|---|---|
+| skills | ✅ | ✅ | ✅ |
+| workers (subagents) | ✅ | ✅ | ✗ (none in Codex) |
+| hooks | ✅ | ✅ (bypass, read-size) | ✗ (none in Codex) |
+| instructions | user-level `CLAUDE.md` | per-project via `link` | `~/.codex/AGENTS.md` |
+| model prefs | `settings.json` | in-app only | `[profiles.sprharness]` in `config.toml` |
+| routing engine | ✅ | partial | ✗ |
 
-Your pre-existing config is safe: JSON files (`mcp.json`, `settings.json`,
-`hooks.json`) are merged key-by-key with tracked undo, shared text files get
-a marker-managed block, and a skill/agent/prompt of yours with the same name
-as a harness one is **skipped with a warning**, never overwritten
-(`--force` to override).
+Auth is each product's own subscription sign-in (`claude`, the Cursor app,
+`codex` → ChatGPT).
 
-## Adding content
+## Contributing
 
-- **Skill**: `shared/skills/<name>/SKILL.md` (works in all three hosts).
-- **Worker/subagent**: `shared/agents/<name>.md` (Claude Code + Cursor; Codex has no subagents).
-- **Slash prompt**: `shared/prompts/<name>.md` (all three hosts).
-- **Instructions**: `shared/instructions/*.md` (Claude + Codex user-level; Cursor per-project via `harness link`).
-- **Hook**: define in `shared/hooks/hooks.json`, script in `shared/hooks/scripts/` (Claude + Cursor; ships disabled — enable deliberately).
-- **MCP server**: `shared/mcp/servers.json` (all three hosts).
-
-Then commit, and every machine picks it up with `git pull && harness install`.
-
-## Docs
-
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — the five separated concerns and how the repo maps to them
-- [docs/HOSTS.md](docs/HOSTS.md) — researched per-host capabilities and the asymmetries the harness respects
-- [docs/WORKFLOWS.md](docs/WORKFLOWS.md) — multi-machine and team workflows
+See [CONTRIBUTING.md](CONTRIBUTING.md). Run `node cli/harness.mjs check --strict`
+and `node tests/run.mjs` before opening a PR; token-saving claims need a
+real `harness bench` report.

@@ -3,13 +3,18 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readJson } from './fsutil.mjs';
 
-export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+// The content root (harness.json, config/, shared/, profiles/) defaults to
+// this repo. SPRHARNESS_ROOT (or `harness --root <dir>`) points the same CLI
+// at a different content repo — the engine/content split for distribution.
+export const cliRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+export const repoRoot = process.env.SPRHARNESS_ROOT ? path.resolve(process.env.SPRHARNESS_ROOT) : cliRoot;
 
 export const dirs = {
   config: path.join(repoRoot, 'config'),
   shared: path.join(repoRoot, 'shared'),
   profiles: path.join(repoRoot, 'profiles'),
-  templates: path.join(repoRoot, 'templates'),
+  templates: path.join(cliRoot, 'templates'),
+  bench: path.join(repoRoot, 'bench'),
   local: path.join(repoRoot, 'local'),
   manifests: path.join(repoRoot, 'local', 'manifests'),
   backups: path.join(repoRoot, 'local', 'backups'),

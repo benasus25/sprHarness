@@ -1,6 +1,8 @@
 import path from 'node:path';
 import { readJson } from '../lib/fsutil.mjs';
 import { replaceHarnessEntries } from '../lib/ops.mjs';
+import { repoRoot, dirs } from '../lib/paths.mjs';
+import { loadLocalEnv, materializeMcpEnv, hookCommandArgs } from '../lib/content.mjs';
 import { runVersion, runCommand } from './detect.mjs';
 
 // ── Cursor ───────────────────────────────────────────────────────────────
@@ -22,6 +24,7 @@ export default {
   id: 'cursor',
   label: 'Cursor',
   binaries: ['cursor-agent', 'cursor'],
+  supports: { skills: true, agents: true, prompts: true, instructions: false, hooks: true, mcp: true },
 
   detect() {
     return runVersion(this.binaries);
@@ -58,14 +61,21 @@ export default {
 
     if (inst.hooks !== false) {
       const wired = {};
-      for (const hook of content.hooks) {
+      const vars = { repoRoot, localDir: dirs.local, hostDir: hd.cursorDir };
+      const applicable = content.hooks.filter((h) => h.cursor);
+      if (applicable.length > 0) {
+        for (const lib of content.hookShared) {
+          ops.copyFile(path.join(lib.root, lib.file), path.join(hd.cursorDir, 'hooks', 'sprharness', path.basename(lib.file)), `hook lib ${path.basename(lib.file)}`);
+        }
+      }
+      for (const hook of applicable) {
         const spec = hook.cursor;
-        if (!spec) continue;
         const src = path.join(hook.root, spec.script);
         const relDest = path.join('hooks', 'sprharness', path.basename(spec.script));
-        ops.copyFile(src, path.join(hd.cursorDir, relDest), `hook script ${hook.id}`);
+        ops.copyFile(src, path.join(hd.cursorDir, relDest), `hook ${hook.id} (${spec.event})`);
         // User-level hook commands resolve relative to ~/.cursor/
-        const entry = { command: `node ${relDest.split(path.sep).join('/')}` };
+        const args = hookCommandArgs(spec, vars).map((a) => ` "${a}"`).join('');
+        const entry = { command: `node ${relDest.split(path.sep).join('/')}${args}` };
         (wired[spec.event] = wired[spec.event] || []).push(entry);
       }
       if (Object.keys(wired).length > 0) {
@@ -83,11 +93,14 @@ export default {
 
     if (inst.mcp !== false) {
       const servers = {};
+      const localEnv = loadLocalEnv();
       for (const [name, def] of Object.entries(content.mcpServers)) {
         if (def.hosts && !def.hosts.includes('cursor')) continue;
+        const { env, unresolved } = materializeMcpEnv(def, localEnv);
+        if (unresolved.length) ops.skip(`MCP ${name} env`, `unresolved ${unresolved.map((u) => '${' + u + '}').join(', ')} — set with \`harness env set\``);
         servers[name] = def.url
           ? { url: def.url }
-          : { command: def.command, args: def.args || [], env: def.env || {} };
+          : { command: def.command, args: def.args || [], env };
       }
       if (Object.keys(servers).length > 0) {
         ops.jsonMerge(path.join(hd.cursorDir, 'mcp.json'), { mcpServers: servers }, 'MCP servers');

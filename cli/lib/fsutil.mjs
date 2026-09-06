@@ -55,6 +55,26 @@ export function sha256(text) {
   return crypto.createHash('sha256').update(text).digest('hex');
 }
 
+export function hashFile(file) {
+  try { return sha256(fs.readFileSync(file)); } catch { return null; }
+}
+
+// Content hash of a directory tree: sorted relative paths + file hashes.
+export function hashDir(root) {
+  if (!isDir(root)) return null;
+  const entries = [];
+  const walk = (dir, rel) => {
+    for (const d of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const p = path.join(dir, d.name);
+      const r = rel ? rel + '/' + d.name : d.name;
+      if (d.isDirectory()) walk(p, r);
+      else if (d.isFile()) entries.push(r + ':' + hashFile(p));
+    }
+  };
+  walk(root, '');
+  return sha256(entries.join('\n'));
+}
+
 export function listDirs(root) {
   if (!isDir(root)) return [];
   return fs.readdirSync(root, { withFileTypes: true })

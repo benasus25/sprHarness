@@ -1,19 +1,47 @@
 {
   "name": "sprharness",
-  "version": "0.1.0",
-  "description": "Portable, host-agnostic configuration harness for AI coding agents (Claude Code, Cursor, Codex). Configuration-first: configure hosts whether or not they are installed.",
+  "version": "0.2.0",
+  "description": "Portable, host-agnostic harness for AI coding agents (Claude Code, Cursor, Codex): model-tiered workers, token-thrift hooks, skills, and an A/B benchmark — configuration-first, subscription-friendly, zero dependencies.",
   "type": "module",
   "bin": {
     "sprharness": "cli/harness.mjs"
   },
+  "files": [
+    "cli/",
+    "shared/",
+    "templates/",
+    "schemas/",
+    "bench/suite.json",
+    "harness",
+    "harness.cmd",
+    "README.md",
+    "CHANGELOG.md"
+  ],
   "scripts": {
+    "test": "node tests/run.mjs",
+    "check": "node cli/harness.mjs check --strict",
+    "bench:mock": "node cli/harness.mjs bench run --runner mock --n 1",
     "setup": "node cli/harness.mjs setup",
-    "install-hosts": "node cli/harness.mjs install",
-    "doctor": "node cli/harness.mjs doctor",
-    "status": "node cli/harness.mjs status"
+    "doctor": "node cli/harness.mjs doctor"
   },
   "engines": {
     "node": ">=16.7"
+  },
+  "keywords": [
+    "claude-code",
+    "cursor",
+    "codex",
+    "ai-agents",
+    "agent-skills",
+    "subagents",
+    "hooks",
+    "mcp",
+    "dotfiles",
+    "token-optimization"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/benasus25/sprHarness.git"
   },
   "license": "MIT",
   "private": true

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { dirs } from './paths.mjs';
-import { exists, copyDir, copyFile, backupFile } from './fsutil.mjs';
+import { exists, copyDir, copyFile, backupFile, hashFile, hashDir, sha256 } from './fsutil.mjs';
 import { upsertBlock } from './markers.mjs';
 import { mergeIntoJsonFile } from './jsonmerge.mjs';
 import { c, sym } from './ui.mjs';
@@ -29,13 +29,18 @@ export function makeOps({ manifest, dryRun, log, ownedTargets = new Set(), force
   function guardedCopy(kind, src, dest, label) {
     if (!force && exists(dest) && !ownedTargets.has(dest)) {
       log(`  ${sym.warn} ${label} ${c.yellow('skipped')} ${c.dim('— ' + dest + ' already exists and is not harness-managed (yours). Use --force to overwrite.')}`);
+      // Recorded for `harness diff` only; uninstall ignores it and the next
+      // install must NOT treat this target as harness-owned.
+      if (!dryRun) manifest.actions.push({ type: 'skipped', target: dest, source: src, label });
       return;
     }
     log(`  + ${label} ${c.dim('→ ' + dest)}`);
     if (dryRun) return;
     if (kind === 'dir') copyDir(src, dest);
     else copyFile(src, dest);
-    manifest.actions.push({ type: kind === 'dir' ? 'copyDir' : 'copyFile', target: dest });
+    // source + hash let `harness diff` detect repo changes and local edits.
+    const hash = kind === 'dir' ? hashDir(src) : hashFile(src);
+    manifest.actions.push({ type: kind === 'dir' ? 'copyDir' : 'copyFile', target: dest, source: src, hash, label });
   }
 
   return {
@@ -52,7 +57,7 @@ export function makeOps({ manifest, dryRun, log, ownedTargets = new Set(), force
       if (dryRun) return;
       backupOnce(file);
       upsertBlock(file, id, body, style);
-      manifest.actions.push({ type: 'marker', file, id, style });
+      manifest.actions.push({ type: 'marker', file, id, style, hash: sha256(body.trimEnd()), label });
     },
 
     // Deep-merge keys into a JSON file the host also owns (settings.json,

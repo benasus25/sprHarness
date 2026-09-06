@@ -1,6 +1,8 @@
 import path from 'node:path';
 import { readJson, readText, exists } from '../lib/fsutil.mjs';
 import { replaceHarnessEntries } from '../lib/ops.mjs';
+import { repoRoot, dirs } from '../lib/paths.mjs';
+import { loadLocalEnv, materializeMcpEnv, hookCommandArgs } from '../lib/content.mjs';
 import { runVersion } from './detect.mjs';
 
 // ── Claude Code ──────────────────────────────────────────────────────────
@@ -18,6 +20,7 @@ export default {
   id: 'claude',
   label: 'Claude Code',
   binaries: ['claude'],
+  supports: { skills: true, agents: true, prompts: true, instructions: true, hooks: true, mcp: true },
 
   detect(hd) {
     const probe = runVersion(this.binaries);
@@ -89,18 +92,26 @@ export default {
       }
     }
 
-    // Hooks: copy scripts, then wire them into settings.json's hooks map.
+    // Hooks: copy the shared lib + scripts, then wire them into settings.json.
     if (inst.hooks !== false) {
       const wired = {};
-      for (const hook of content.hooks) {
+      const hookDir = path.join(hd.claudeDir, 'hooks', 'sprharness');
+      const vars = { repoRoot, localDir: dirs.local, hostDir: hd.claudeDir };
+      const applicable = content.hooks.filter((h) => h.claude);
+      if (applicable.length > 0) {
+        for (const lib of content.hookShared) {
+          ops.copyFile(path.join(lib.root, lib.file), path.join(hookDir, path.basename(lib.file)), `hook lib ${path.basename(lib.file)}`);
+        }
+      }
+      for (const hook of applicable) {
         const spec = hook.claude;
-        if (!spec) continue;
         const src = path.join(hook.root, spec.script);
-        const dest = path.join(hd.claudeDir, 'hooks', 'sprharness', path.basename(spec.script));
-        ops.copyFile(src, dest, `hook script ${hook.id}`);
+        const dest = path.join(hookDir, path.basename(spec.script));
+        ops.copyFile(src, dest, `hook ${hook.id} (${spec.event})`);
+        const args = hookCommandArgs(spec, vars).map((a) => ` "${a}"`).join('');
         const entry = {
           ...(spec.matcher ? { matcher: spec.matcher } : {}),
-          hooks: [{ type: 'command', command: `node "${dest}"` }],
+          hooks: [{ type: 'command', command: `node "${dest}"${args}` }],
         };
         (wired[spec.event] = wired[spec.event] || []).push(entry);
       }
@@ -121,11 +132,14 @@ export default {
     // Claude Code is first run — it merges its own state in later).
     if (inst.mcp !== false) {
       const servers = {};
+      const localEnv = loadLocalEnv();
       for (const [name, def] of Object.entries(content.mcpServers)) {
         if (def.hosts && !def.hosts.includes('claude')) continue;
+        const { env, unresolved } = materializeMcpEnv(def, localEnv);
+        if (unresolved.length) ops.skip(`MCP ${name} env`, `unresolved ${unresolved.map((u) => '${' + u + '}').join(', ')} — set with \`harness env set\``);
         servers[name] = def.url
           ? { type: def.transport === 'sse' ? 'sse' : 'http', url: def.url }
-          : { type: 'stdio', command: def.command, args: def.args || [], env: def.env || {} };
+          : { type: 'stdio', command: def.command, args: def.args || [], env };
       }
       if (Object.keys(servers).length > 0) {
         ops.jsonMerge(hd.claudeStateFile, { mcpServers: servers }, 'MCP servers (user scope)');

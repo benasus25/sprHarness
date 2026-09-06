@@ -1,0 +1,65 @@
+{
+  "$schema": "../schemas/bench-suite.schema.json",
+  "name": "default",
+  "$comment": "A/B benchmark suite. `target` is cloned shallowly into local/bench/targets/ (or point `path` at a local repo). Tasks are grouped by category so the report can show where the harness wins and where `bare:` should be used. Success checks: `expect` (substrings in the reply), `expectFiles` (paths under target), `verify` (shell command, exit 0). Runs cost real subscription usage: 8 tasks x 2 conditions x n=3 ~ 48 sessions.",
+  "target": {
+    "git": "https://github.com/expressjs/express.git",
+    "ref": "4.21.2",
+    "dir": "express-4.21.2"
+  },
+  "claudeCommand": "claude",
+  "maxTurns": 40,
+  "timeoutSec": 900,
+  "allowedTools": ["Read", "Grep", "Glob", "Write", "Edit", "MultiEdit", "Bash", "Task", "Agent"],
+  "tasks": [
+    {
+      "id": "explain-routing",
+      "category": "read-heavy",
+      "prompt": "Explain how Express routes an incoming request from app.handle to a matching route handler. Name the files and functions involved, in order.",
+      "expect": ["router"]
+    },
+    {
+      "id": "summarize-response",
+      "category": "read-heavy",
+      "prompt": "Summarize the responsibilities of lib/response.js in 5 bullets, naming the most important methods it defines.",
+      "expect": ["send"]
+    },
+    {
+      "id": "find-usages",
+      "category": "read-heavy",
+      "prompt": "List every place inside lib/ where a function named `send` is defined or called on the response object. Give file:line for each.",
+      "expect": ["lib/response.js"]
+    },
+    {
+      "id": "middleware-order",
+      "category": "read-heavy",
+      "prompt": "Where and how is the execution order of middleware determined in this codebase? Explain with file references.",
+      "expect": ["lib/router"]
+    },
+    {
+      "id": "write-utils-tests",
+      "category": "generation",
+      "prompt": "Create a new test file test/harness-bench.utils.js that tests the `etag` and `setCharset` helpers exported by lib/utils.js, following the style of the existing mocha tests in test/. Do not modify any existing file.",
+      "expectFiles": ["test/harness-bench.utils.js"],
+      "verify": "node -e \"const s=require('fs').readFileSync('test/harness-bench.utils.js','utf8');process.exit(/etag/.test(s)&&/setCharset/.test(s)?0:1)\""
+    },
+    {
+      "id": "add-jsdoc",
+      "category": "generation",
+      "prompt": "Add a JSDoc comment block above the `createApplication` function in lib/express.js describing what it does and what it returns (use @returns). Change nothing else.",
+      "verify": "node -e \"const s=require('fs').readFileSync('lib/express.js','utf8');process.exit(/@returns?/.test(s)?0:1)\""
+    },
+    {
+      "id": "one-file-question",
+      "category": "tiny",
+      "prompt": "What does lib/view.js export, and what is the constructor's second argument used for? Answer in two sentences.",
+      "expect": ["View"]
+    },
+    {
+      "id": "trivial-edit",
+      "category": "tiny",
+      "prompt": "Create a file named BENCH.txt in the repository root containing exactly the text: ok",
+      "expectFiles": ["BENCH.txt"]
+    }
+  ]
+}

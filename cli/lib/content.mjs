@@ -31,6 +31,7 @@ export function loadContent() {
   const instructionParts = [];
   const hostInstructionParts = {}; // host id → [parts]
   const hooks = new Map();
+  const hookShared = new Map();
   const mcpServers = {};
 
   for (const root of roots) {
@@ -60,6 +61,9 @@ export function loadContent() {
       for (const hook of hookConfig.hooks) {
         if (hook.id) hooks.set(hook.id, { ...hook, root: path.join(root, 'hooks') });
       }
+      for (const file of hookConfig.shared || []) {
+        hookShared.set(path.basename(file), { file, root: path.join(root, 'hooks') });
+      }
     }
     const mcp = readJson(path.join(root, 'mcp', 'servers.json'), null);
     if (mcp && mcp.servers) {
@@ -80,8 +84,47 @@ export function loadContent() {
     },
     hooks: [...hooks.values()].filter((h) => h.enabled !== false),
     hooksAll: [...hooks.values()],
+    hookShared: [...hookShared.values()],
     mcpServers,
   };
+}
+
+// {{repoRoot}}, {{localDir}}, {{hostDir}} in hook args / MCP values are
+// resolved at install time so the portable definition never hard-codes a
+// machine path. ${VAR} in MCP env values resolves from local/env.json then
+// the process environment (see `harness env`).
+export function resolvePlaceholders(value, vars) {
+  if (typeof value !== 'string') return value;
+  return value.replace(/\{\{(\w+)\}\}/g, (m, name) => (name in vars ? vars[name] : m));
+}
+
+export function loadLocalEnv() {
+  return readJson(path.join(dirs.local, 'env.json'), {}) || {};
+}
+
+// Install-time view of an MCP server's env map with ${VAR} refs resolved.
+// Returns { env, unresolved } so adapters can warn without failing.
+export function materializeMcpEnv(def, localEnv) {
+  const unresolved = [];
+  const env = {};
+  for (const [k, v] of Object.entries(def.env || {})) {
+    env[k] = resolveEnvRefs(v, localEnv, (name) => unresolved.push(name));
+  }
+  return { env, unresolved };
+}
+
+export function hookCommandArgs(spec, vars) {
+  return (spec.args || []).map((a) => resolvePlaceholders(a, vars));
+}
+
+export function resolveEnvRefs(value, localEnv, warn = () => {}) {
+  if (typeof value !== 'string') return value;
+  return value.replace(/\$\{(\w+)\}/g, (m, name) => {
+    if (name in localEnv) return localEnv[name];
+    if (name in process.env) return process.env[name];
+    warn(name);
+    return m;
+  });
 }
 
 export function loadHostConfig(host) {

@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://sprharness.dev/schemas/hooks.schema.json",
+  "title": "sprHarness hooks.json",
+  "type": "object",
+  "required": ["hooks"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "$comment": { "type": "string" },
+    "shared": {
+      "type": "array",
+      "description": "Files installed alongside every hook script (e.g. scripts/hooklib.mjs).",
+      "items": { "type": "string" }
+    },
+    "hooks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+          "enabled": { "type": "boolean", "default": true },
+          "category": { "type": "string", "enum": ["thrift", "safety", "telemetry", "bypass", "other"], "description": "thrift hooks honor the bare: bypass; all others never do." },
+          "description": { "type": "string" },
+          "claude": { "$ref": "#/definitions/mapping" },
+          "cursor": { "$ref": "#/definitions/mapping" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "definitions": {
+    "mapping": {
+      "type": "object",
+      "required": ["event", "script"],
+      "properties": {
+        "event": { "type": "string", "description": "Host event name (Claude: PreToolUse, UserPromptSubmit, SessionEnd…; Cursor: beforeReadFile, beforeSubmitPrompt…)." },
+        "matcher": { "type": "string", "description": "Claude Code tool matcher regex, e.g. Read|Edit." },
+        "script": { "type": "string", "description": "Path relative to the hooks/ directory; Node script." },
+        "args": { "type": "array", "items": { "type": "string" }, "description": "Extra CLI args; {{repoRoot}}, {{localDir}}, {{hostDir}} are resolved at install." }
+      },
+      "additionalProperties": false
+    }
+  }
+}

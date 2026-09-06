@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://sprharness.dev/schemas/bench-suite.schema.json",
+  "title": "sprHarness benchmark suite",
+  "type": "object",
+  "required": ["target", "tasks"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "$comment": { "type": "string" },
+    "name": { "type": "string" },
+    "target": {
+      "type": "object",
+      "description": "Repository the tasks run in. Either a git URL (cloned shallowly into local/bench/targets/) or a local path.",
+      "properties": {
+        "git": { "type": "string" },
+        "ref": { "type": "string", "description": "Tag or branch to pin for reproducibility." },
+        "dir": { "type": "string" },
+        "path": { "type": "string" }
+      }
+    },
+    "claudeCommand": { "type": "string", "default": "claude" },
+    "maxTurns": { "type": "integer", "default": 40 },
+    "timeoutSec": { "type": "integer", "default": 900 },
+    "allowedTools": { "type": "array", "items": { "type": "string" } },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "prompt"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+          "category": { "type": "string", "description": "Free-form grouping; the report compares conditions per category (e.g. read-heavy, generation, tiny)." },
+          "prompt": { "type": "string" },
+          "expect": { "type": "array", "items": { "type": "string" }, "description": "Case-insensitive substrings that must appear in the reply." },
+          "expectFiles": { "type": "array", "items": { "type": "string" }, "description": "Paths (relative to target) that must exist afterwards." },
+          "verify": { "type": "string", "description": "Shell command run in the target; exit 0 = success." },
+          "maxTurns": { "type": "integer" },
+          "timeoutSec": { "type": "integer" }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

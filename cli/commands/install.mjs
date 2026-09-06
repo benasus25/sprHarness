@@ -55,9 +55,11 @@ export async function install(args) {
     // Idempotent re-install: undo the previous install first so removed
     // skills/agents don't linger. (Dry runs never touch the manifest.)
     const previous = loadManifest(id);
+    // Only files the harness actually wrote count as owned — a 'skipped'
+    // record points at the USER's file and must never license an overwrite.
     const ownedTargets = new Set(
       ((previous && previous.actions) || [])
-        .filter((a) => a.target)
+        .filter((a) => a.target && (a.type === 'copyDir' || a.type === 'copyFile'))
         .map((a) => a.target)
     );
     if (previous && !dryRun) {

@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { exists } from '../lib/fsutil.mjs';
 import { tomlTable } from '../lib/toml.mjs';
+import { loadLocalEnv, materializeMcpEnv } from '../lib/content.mjs';
 import { runVersion } from './detect.mjs';
 
 // ── OpenAI Codex ─────────────────────────────────────────────────────────
@@ -24,6 +25,7 @@ export default {
   id: 'codex',
   label: 'Codex',
   binaries: ['codex'],
+  supports: { skills: true, agents: false, prompts: true, instructions: true, hooks: false, mcp: true },
 
   detect() {
     return runVersion(this.binaries);
@@ -82,11 +84,14 @@ export default {
       }
 
       if (inst.mcp !== false) {
+        const localEnv = loadLocalEnv();
         for (const [name, def] of Object.entries(content.mcpServers)) {
           if (def.hosts && !def.hosts.includes('codex')) continue;
+          const { env, unresolved } = materializeMcpEnv(def, localEnv);
+          if (unresolved.length) ops.skip(`MCP ${name} env`, `unresolved ${unresolved.map((u) => '${' + u + '}').join(', ')} — set with \`harness env set\``);
           const entry = def.url
             ? { url: def.url }
-            : { command: def.command, args: def.args || [], ...(def.env && Object.keys(def.env).length ? { env: def.env } : {}) };
+            : { command: def.command, args: def.args || [], ...(Object.keys(env).length ? { env } : {}) };
           parts.push(tomlTable(['mcp_servers', name], entry));
         }
       }

@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://sprharness.dev/schemas/servers.schema.json",
+  "title": "sprHarness MCP servers.json",
+  "type": "object",
+  "required": ["servers"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "$comment": { "type": "string" },
+    "servers": {
+      "type": "object",
+      "description": "Keys starting with $ are ignored (comments/examples).",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "command": { "type": "string", "description": "stdio server executable." },
+          "args": { "type": "array", "items": { "type": "string" } },
+          "env": {
+            "type": "object",
+            "additionalProperties": { "type": "string" },
+            "description": "Use ${VAR} for secrets; resolved from local/env.json (harness env set) then the process environment at install."
+          },
+          "url": { "type": "string", "description": "Remote server URL (http or sse transport)." },
+          "transport": { "type": "string", "enum": ["stdio", "http", "sse"] },
+          "hosts": { "type": "array", "items": { "type": "string", "enum": ["claude", "cursor", "codex"] }, "description": "Limit to specific hosts; default all." }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Validate portable content
+        run: node cli/harness.mjs check --strict
+      - name: Unit + integration tests (sandboxed home)
+        run: node tests/run.mjs
+      - name: Benchmark pipeline (mock runner)
+        run: node cli/harness.mjs bench run --runner mock --n 1
+      - name: Install into a throwaway home (no hosts present) must succeed
+        shell: bash
+        env:
+          SPRHARNESS_HOME_OVERRIDE: ${{ runner.temp }}/fakehome
+        run: |
+          node cli/harness.mjs install
+          node cli/harness.mjs doctor
+          node cli/harness.mjs diff --exit-code
+          node cli/harness.mjs uninstall
