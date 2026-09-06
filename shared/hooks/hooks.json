@@ -1,0 +1,39 @@
+{
+  "$comment": "Portable hook definitions, mapped per host that supports hooks (Claude Code, Cursor — Codex has none). Scripts are Node so one implementation runs on every OS. The token-thrift pair implements Spotify's 'shunt' enforcement layer and ships ENABLED for Claude Code; they fail open and can be disabled here (then `harness install`). Threshold via env SPRHARNESS_MAX_READ_LINES (default 400). protect-secrets ships disabled — enable deliberately.",
+  "hooks": [
+    {
+      "id": "max-read-size",
+      "enabled": true,
+      "description": "Blocks untargeted Read of files >400 lines; directs to the bulk-reader worker (token thrift).",
+      "claude": {
+        "event": "PreToolUse",
+        "matcher": "Read",
+        "script": "scripts/check-read-size.claude.mjs"
+      }
+    },
+    {
+      "id": "no-bulk-cat",
+      "enabled": true,
+      "description": "Blocks cat/type/Get-Content full dumps of large files in Bash; directs to bulk-reader (token thrift).",
+      "claude": {
+        "event": "PreToolUse",
+        "matcher": "Bash",
+        "script": "scripts/check-bash-read.claude.mjs"
+      }
+    },
+    {
+      "id": "protect-secrets",
+      "enabled": false,
+      "description": "Blocks the agent from reading or editing .env / secrets files.",
+      "claude": {
+        "event": "PreToolUse",
+        "matcher": "Read|Edit|Write",
+        "script": "scripts/protect-secrets.claude.mjs"
+      },
+      "cursor": {
+        "event": "beforeReadFile",
+        "script": "scripts/protect-secrets.cursor.mjs"
+      }
+    }
+  ]
+}

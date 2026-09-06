@@ -1,0 +1,20 @@
+{
+  "name": "sprharness",
+  "version": "0.1.0",
+  "description": "Portable, host-agnostic configuration harness for AI coding agents (Claude Code, Cursor, Codex). Configuration-first: configure hosts whether or not they are installed.",
+  "type": "module",
+  "bin": {
+    "sprharness": "cli/harness.mjs"
+  },
+  "scripts": {
+    "setup": "node cli/harness.mjs setup",
+    "install-hosts": "node cli/harness.mjs install",
+    "doctor": "node cli/harness.mjs doctor",
+    "status": "node cli/harness.mjs status"
+  },
+  "engines": {
+    "node": ">=16.7"
+  },
+  "license": "MIT",
+  "private": true
+}

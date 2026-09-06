@@ -1,0 +1,25 @@
+{
+  "$comment": "Codex host configuration (portable — commit this). Written as a [profiles.<profileName>] table in a managed block of ~/.codex/config.toml; activate with `codex --profile <profileName>`. Auth is NOT configured here: each machine runs `codex` once and signs in with ChatGPT (subscription).",
+
+  "profileName": "sprharness",
+
+  "model": null,
+  "$model_examples": "\"gpt-5.5-codex\" — profile `model` key",
+
+  "modelReasoningEffort": null,
+  "$modelReasoningEffort_examples": "\"low\" | \"medium\" | \"high\" | \"xhigh\"",
+
+  "approvalPolicy": null,
+  "$approvalPolicy_examples": "\"untrusted\" | \"on-request\" | \"never\"",
+
+  "sandboxMode": null,
+  "$sandboxMode_examples": "\"read-only\" | \"workspace-write\" | \"danger-full-access\"",
+
+  "install": {
+    "skills": true,
+    "prompts": true,
+    "instructions": true,
+    "profile": true,
+    "mcp": true
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "$comment": "Claude Code host configuration (portable — commit this). null = leave the host's own default alone. Auth is NOT configured here: each machine signs in with `claude` using a Claude Pro/Max subscription.",
+
+  "model": null,
+  "$model_examples": "\"opus\" | \"sonnet\" | \"claude-opus-5\" — written to ~/.claude/settings.json `model`",
+
+  "env": {},
+  "$env_examples": "environment variables merged into settings.json `env`, e.g. {\"CLAUDE_CODE_ENABLE_TELEMETRY\": \"0\"}",
+
+  "settings": {},
+  "$settings_examples": "any extra ~/.claude/settings.json keys to manage, e.g. {\"includeCoAuthoredBy\": false} — keys are merged, tracked, and reverted on uninstall",
+
+  "install": {
+    "skills": true,
+    "agents": true,
+    "prompts": true,
+    "instructions": true,
+    "hooks": true,
+    "mcp": true,
+    "userSettings": true
+  }
+}

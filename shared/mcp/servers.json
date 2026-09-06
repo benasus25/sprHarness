@@ -1,0 +1,11 @@
+{
+  "$comment": "Portable MCP server definitions, translated per host on install: Claude → ~/.claude.json (user scope), Cursor → ~/.cursor/mcp.json, Codex → [mcp_servers.*] tables in the managed block of ~/.codex/config.toml. Keys starting with $ are ignored (comments/examples). Use `hosts` to limit a server to specific hosts. Put secrets in each machine's environment — NEVER inline here.",
+  "servers": {
+    "$example-stdio": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "env": {},
+      "hosts": ["claude", "cursor", "codex"]
+    }
+  }
+}

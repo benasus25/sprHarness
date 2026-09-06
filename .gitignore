@@ -1,0 +1,20 @@
+# ── Machine-local state: NEVER committed ─────────────────────────
+# Everything under local/ is specific to one machine: active profile,
+# path overrides, install manifests, backups of merged host files.
+local/
+
+# ── Architecture docs: kept local, never pushed ───────────────────
+# These explain how the harness works internally. Intentionally excluded
+# from every commit (not just .gitignore'd from a clean tree) — see
+# git history rewrite in commit history if this ever needs revisiting.
+docs/
+
+# Node
+node_modules/
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Editors
+*.swp

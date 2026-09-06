@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "hosts": {
+    "claude": {
+      "configured": true,
+      "configuredAt": "2026-09-06T16:47:17.054Z"
+    },
+    "cursor": {
+      "configured": true,
+      "configuredAt": "2026-09-06T16:47:17.198Z"
+    },
+    "codex": {
+      "configured": true,
+      "configuredAt": "2026-09-06T16:47:17.924Z"
+    }
+  }
+}

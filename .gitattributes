@@ -1,0 +1,6 @@
+# Keep the repo usable from any OS. The POSIX wrapper must stay LF —
+# a CRLF shebang line breaks it on macOS/Linux.
+* text=auto
+harness text eol=lf
+*.mjs text eol=lf
+harness.cmd text eol=crlf

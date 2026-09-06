@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+# POSIX wrapper so `./harness <cmd>` works on macOS/Linux without npm link.
+DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+exec node "$DIR/cli/harness.mjs" "$@"

@@ -1,0 +1,14 @@
+{
+  "$comment": "Cursor host configuration (portable — commit this). Cursor's primary model choice lives in the app UI and is account-scoped, so it is not written to disk here; `defaultModel` documents the team preference and is available to future subagent translation. Auth: sign in inside Cursor (subscription).",
+
+  "defaultModel": null,
+  "$defaultModel_examples": "\"claude-opus-5\" | \"gpt-5.5\" — informational / used as subagent default",
+
+  "install": {
+    "skills": true,
+    "agents": true,
+    "commands": true,
+    "hooks": true,
+    "mcp": true
+  }
+}
